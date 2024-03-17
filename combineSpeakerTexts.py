@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 import os
-import time
-import copy
 
 SUPPORTED_FILE_EXTENSIONS = (".txt")
 
@@ -50,20 +48,6 @@ def removeRepeatHallucinations(transcribedFile: list[TranscribedLine]) -> list[T
         outerIndex = outerIndex + 1
     return cloneList
 
-# Playing with how it reads to have multiple lines of audio transcribed together
-# def combineContiguousAudio(transcribedFile: list[TranscribedLine]) -> list[TranscribedLine]:
-#     i = 0
-#     cloneList = copy.deepcopy(transcribedFile)
-#     while i < len(cloneList)-1:
-#         currLine = cloneList[i]
-#         nextLine = cloneList[i+1]
-#         while currLine.timeStampEnd == nextLine.timeStampStart:
-#             currLine.lineText = f'{currLine.lineText} {nextLine.lineText}'
-#             currLine.timeStampEnd = nextLine.timeStampEnd
-#             del cloneList[i+1:i+2]
-#         i = i +1
-#     return cloneList
-
 # This function removes repated sequences of tnrascribed lines
 # This is another type of hallucination that occurs and causes repeat junk text
 # These repeated sequences are always adjacent
@@ -79,7 +63,6 @@ def removeRepeatedSequences(transcribedFile: list[TranscribedLine]) -> list[Tran
         while len(sequence) < maxSequenceLength and outerIndex + sequenceOffset < len(cloneList) and not sequencesDeleted:
             compareSeqIndex = outerIndex + sequenceOffset
             while compareSeqIndex + sequenceOffset <= len(cloneList) and sequencesAreSame(cloneList[outerIndex:outerIndex+sequenceOffset], cloneList[compareSeqIndex:compareSeqIndex+sequenceOffset]):
-                print(f'removing indices {compareSeqIndex} to {compareSeqIndex+sequenceOffset}')
                 del cloneList[compareSeqIndex:compareSeqIndex+sequenceOffset]
                 sequencesDeleted = True
             sequenceOffset = sequenceOffset + 1
@@ -109,24 +92,27 @@ def preprocessFiles(path: str, files: list[str]) -> dict[str, list[TranscribedLi
 def combineSpeakers(speakerLines: dict[str, list[TranscribedLine]]) -> list[TranscibedLineWithSpeaker]:
     indices = {speaker: 0 for speaker in speakerLines}
     allLines = []
-    iterableIndices = [speaker for speaker, lines in speakerLines if indices[speaker] < len(lines)]
-    mapped = map(lambda speaker: (speaker, speakerLines[speaker][indices[speaker]]), iterableIndices)
-    indexToIter = sorted(mapped, key=lambda speakerTranscribedLineTuple: speakerTranscribedLineTuple[1].timeStampStart)[0]
+    iterableIndices = [speaker for speaker, lines in speakerLines.items() if indices[speaker] < len(lines)]
     while len(iterableIndices) > 0:
+        mapped = map(lambda speaker: (speaker, speakerLines[speaker][indices[speaker]]), iterableIndices)
+        indexToIter = sorted(mapped, key=lambda speakerTranscribedLineTuple: speakerTranscribedLineTuple[1].timeStampStart)[0]
         speaker = indexToIter[0]
         line = indexToIter[1]
         allLines.append(TranscibedLineWithSpeaker(speaker=speaker, timeStampStart=line.timeStampStart, timeStampEnd=line.timeStampEnd, lineText=line.lineText))
-        indices[indexToIter[0]] =  indices[indexToIter[0]] + 1
+        indices[indexToIter[0]] = indices[indexToIter[0]] + 1
+        iterableIndices = [speaker for speaker, lines in speakerLines.items() if indices[speaker] < len(lines)]
     return allLines
+
+def writeTranscript(filePathAndName: str, lines: list[TranscibedLineWithSpeaker]):
+    with open(filePathAndName, 'w+', encoding='utf-8') as file:
+        for line in lines:
+            file.write(f'{line.speaker}: {line.lineText.lstrip()}\n')
+    
 
 directoryOfFiles = input('enter the directory to audio files to transcribe: ')
 directoryListDir = os.listdir(directoryOfFiles)
 preProcessedFiles = preprocessFiles(directoryOfFiles, directoryListDir)
-combineSpeakers(preProcessedFiles)
-for file in directoryListDir:
-    if(file.endswith(SUPPORTED_FILE_EXTENSIONS)):
-        transcribedFile = readFile(f'{directoryOfFiles}{os.sep}{file}')
-        cleanedUpFile = processWhisperTranscribedAudio(transcribedFile)
-        with open(f'{directoryOfFiles}{os.sep}{file[:-4]}CleanedUp.txt', 'w+', encoding='utf-8') as file:
-            for line in cleanedUpFile:
-                file.write(f'[{line.timeStampStart}, {line.timeStampEnd}] {line.lineText.lstrip()}\n')
+combinedTranscripts = combineSpeakers(preProcessedFiles)
+lastSeparator = directoryOfFiles.rfind(os.sep)
+name = f'{directoryOfFiles}{os.sep}{directoryOfFiles[lastSeparator:]}AllAudio.txt'
+writeTranscript(name, combinedTranscripts)
