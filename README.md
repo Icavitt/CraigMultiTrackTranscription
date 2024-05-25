@@ -1,10 +1,8 @@
 ## Summary
-This is a series of scripts utilizing Whisper AI to transcribe multi-channel discord audio. I was using Craig for discord transcription and downloading multi-track .flac files.
-
-There will need to be some modifications for single track files and there won't be any speaker identification.
+This is a small script utilizing Whipser AI to transcribe multi-channel discord audio output from [Craig](https://craig.chat/)
 
 ## Setup
 Requires at least python 3.11, and pytorch libraries. Be sure to install CUDA supported libraries if your graphics card supports CUDA.
 
 ## Current Use
-run `python transcribeWithInputs.py` when prompted pass the absolute path to the directory of audio files to transcribe. Then run `python combineSpeakerTexts.py` and pass the same path. Ensure any audio files or text files that you don't want included in transcription aren't in the folder.
+run `python transcribeCraigAudio.py` when prompted pass the absolute path to the directory of audio files to transcribe. After it runs, you'll find in that folder the transcribed audio of each individual speaker - denoted `userName.flac-TranscribedAudio.txt` - and a file with all speakers audio in it - denoted `<directoryName>AllAudio.txt`

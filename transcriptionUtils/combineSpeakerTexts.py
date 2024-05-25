@@ -18,14 +18,14 @@ class SpeakerAndLines:
     speaker: str
     lines: list[TranscribedLine]
 
-def readFile(pathToFile) -> list[TranscribedLine]:
+def __readFile__(pathToFile) -> list[TranscribedLine]:
     arrLinesAndTimes =[]
     with open(f'{pathToFile}', 'r', encoding='utf-8') as file:
         while line := file.readline():
-            arrLinesAndTimes.append(extractLineComponents(line))
+            arrLinesAndTimes.append(__extractLineComponents__(line))
     return arrLinesAndTimes
 
-def extractLineComponents(line) -> TranscribedLine:
+def __extractLineComponents__(line) -> TranscribedLine:
     timeStampAndLineText = line[1:].split(']')
     startTimeEndTime = timeStampAndLineText[0].split(',')
     startTime = startTimeEndTime[0].strip()
@@ -33,12 +33,12 @@ def extractLineComponents(line) -> TranscribedLine:
     lineText = timeStampAndLineText[1].strip()
     return TranscribedLine(float(startTime), float(endTime), lineText)
 
-def processWhisperTranscribedAudio(transcribedFile: list[TranscribedLine]) -> list[TranscribedLine]:
-    dehallucinatedFile = removeRepeatedSequences(transcribedFile)
+def __processWhisperTranscribedAudio__(transcribedFile: list[TranscribedLine]) -> list[TranscribedLine]:
+    dehallucinatedFile = __removeRepeatedSequences__(transcribedFile)
     return dehallucinatedFile
     # return combineContiguousAudio(dehallucinatedFile)
 
-def removeRepeatHallucinations(transcribedFile: list[TranscribedLine]) -> list[TranscribedLine]:
+def __removeRepeatHallucinations__(transcribedFile: list[TranscribedLine]) -> list[TranscribedLine]:
     outerIndex = 0
     cloneList = transcribedFile.copy()
     while outerIndex < len(cloneList):
@@ -51,7 +51,7 @@ def removeRepeatHallucinations(transcribedFile: list[TranscribedLine]) -> list[T
 # This function removes repated sequences of tnrascribed lines
 # This is another type of hallucination that occurs and causes repeat junk text
 # These repeated sequences are always adjacent
-def removeRepeatedSequences(transcribedFile: list[TranscribedLine]) -> list[TranscribedLine]:
+def __removeRepeatedSequences__(transcribedFile: list[TranscribedLine]) -> list[TranscribedLine]:
     cloneList = transcribedFile.copy()
     maxSequenceLength = 10
     outerIndex = 0
@@ -62,34 +62,34 @@ def removeRepeatedSequences(transcribedFile: list[TranscribedLine]) -> list[Tran
         sequencesDeleted = False
         while len(sequence) < maxSequenceLength and outerIndex + sequenceOffset < len(cloneList) and not sequencesDeleted:
             compareSeqIndex = outerIndex + sequenceOffset
-            while compareSeqIndex + sequenceOffset <= len(cloneList) and sequencesAreSame(cloneList[outerIndex:outerIndex+sequenceOffset], cloneList[compareSeqIndex:compareSeqIndex+sequenceOffset]):
+            while compareSeqIndex + sequenceOffset <= len(cloneList) and __sequencesAreSame__(cloneList[outerIndex:outerIndex+sequenceOffset], cloneList[compareSeqIndex:compareSeqIndex+sequenceOffset]):
                 del cloneList[compareSeqIndex:compareSeqIndex+sequenceOffset]
                 sequencesDeleted = True
             sequenceOffset = sequenceOffset + 1
         outerIndex = outerIndex+1
     return cloneList
 
-def sequencesAreSame(baseSequence: list[TranscribedLine], comparedToSequnece:list[TranscribedLine]) -> bool:
+def __sequencesAreSame__(baseSequence: list[TranscribedLine], comparedToSequnece:list[TranscribedLine]) -> bool:
     for baseLine, comparedToline in zip(baseSequence, comparedToSequnece):
         if(baseLine.lineText != comparedToline.lineText): return False
     return True
 
 #won't support 10+ channels
-def getSpeaker(fileName: str) -> str:
+def __getSpeaker__(fileName: str) -> str:
     endIndex = fileName.find('.flac')
     return fileName[2:endIndex]
 
-def preprocessFiles(path: str, files: list[str]) -> dict[str, list[TranscribedLine]]:
+def __preprocessFiles__(path: str, files: list[str]) -> dict[str, list[TranscribedLine]]:
     allFiles = {}
     for file in files:
         if(file.endswith(SUPPORTED_FILE_EXTENSIONS)):
-            transcribedFile = readFile(f'{path}{os.sep}{file}')
-            cleanedUpFile = processWhisperTranscribedAudio(transcribedFile)
-            speaker = getSpeaker(file)
+            transcribedFile = __readFile__(f'{path}{os.sep}{file}')
+            cleanedUpFile = __processWhisperTranscribedAudio__(transcribedFile)
+            speaker = __getSpeaker__(file)
             allFiles[speaker] = cleanedUpFile
     return allFiles
 
-def combineSpeakers(speakerLines: dict[str, list[TranscribedLine]]) -> list[TranscibedLineWithSpeaker]:
+def __combineSpeakers__(speakerLines: dict[str, list[TranscribedLine]]) -> list[TranscibedLineWithSpeaker]:
     indices = {speaker: 0 for speaker in speakerLines}
     allLines = []
     iterableIndices = [speaker for speaker, lines in speakerLines.items() if indices[speaker] < len(lines)]
@@ -103,16 +103,16 @@ def combineSpeakers(speakerLines: dict[str, list[TranscribedLine]]) -> list[Tran
         iterableIndices = [speaker for speaker, lines in speakerLines.items() if indices[speaker] < len(lines)]
     return allLines
 
-def writeTranscript(filePathAndName: str, lines: list[TranscibedLineWithSpeaker]):
+def __writeTranscript__(filePathAndName: str, lines: list[TranscibedLineWithSpeaker]):
     with open(filePathAndName, 'w+', encoding='utf-8') as file:
         for line in lines:
             file.write(f'{line.speaker}: {line.lineText.lstrip()}\n')
     
 
-directoryOfFiles = input('enter the directory to audio files to transcribe: ')
-directoryListDir = os.listdir(directoryOfFiles)
-preProcessedFiles = preprocessFiles(directoryOfFiles, directoryListDir)
-combinedTranscripts = combineSpeakers(preProcessedFiles)
-lastSeparator = directoryOfFiles.rfind(os.sep)
-name = f'{directoryOfFiles}{os.sep}{directoryOfFiles[lastSeparator:]}AllAudio.txt'
-writeTranscript(name, combinedTranscripts)
+def combineTranscribedSpeakerFiles(directoryOfFiles):
+    directoryListDir = os.listdir(directoryOfFiles)
+    preProcessedFiles = __preprocessFiles__(directoryOfFiles, directoryListDir)
+    combinedTranscripts = __combineSpeakers__(preProcessedFiles)
+    lastSeparator = directoryOfFiles.rfind(os.sep)
+    name = f'{directoryOfFiles}{os.sep}{directoryOfFiles[lastSeparator:]}AllAudio.txt'
+    __writeTranscript__(name, combinedTranscripts)
